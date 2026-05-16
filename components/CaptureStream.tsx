@@ -54,14 +54,25 @@ export function CaptureStream({ onRevealReady }: CaptureStreamProps) {
         }),
       });
 
-      const data = await response.json();
-
-      if (!data.success) {
-        setError(data.error || 'Perception failed');
+      // Even non-2xx responses should be parseable JSON; tolerate everything.
+      let data: { success?: boolean; perception?: FramePerception; error?: string; degraded?: boolean; parse_method?: string };
+      try {
+        data = await response.json();
+      } catch {
+        setError('Server kasih respons aneh. Coba lagi.');
         return;
       }
 
-      const perception = data.perception as FramePerception;
+      if (!data?.perception) {
+        setError(data?.error || 'AI nggak balas. Coba lagi.');
+        return;
+      }
+
+      const perception = data.perception;
+      if (data.degraded) {
+        // Degraded but valid — show subtle hint, still render the frame.
+        console.warn('[drift] Degraded perception:', data.parse_method);
+      }
       
       // Store in session
       addFrame(perception);

@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PERCEIVE_SYSTEM_PROMPT, buildPerceiveUserPrompt } from '@/lib/prompts/perceive';
-import { FramePerceptionSchema } from '@/lib/schema';
+import { FramePerceptionSchema, buildFallbackPerception } from '@/lib/schema';
+import { extractJSON } from '@/lib/json-extract';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
-  try {
-    const { image_base64, frame_index } = await request.json();
+  let frameIndex = 0;
 
-    if (!image_base64) {
+  try {
+    const body = await request.json();
+    const { image_base64 } = body;
+    frameIndex = typeof body.frame_index === 'number' ? body.frame_index : 0;
+
+    if (!image_base64 || typeof image_base64 !== 'string') {
       return NextResponse.json(
         { success: false, error: 'No image provided' },
         { status: 400 }
@@ -17,19 +26,23 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { success: false, error: 'API key not configured' },
-        { status: 500 }
-      );
+      console.error('[perceive] GEMINI_API_KEY not configured');
+      return NextResponse.json({
+        success: true,
+        degraded: true,
+        parse_method: 'no-api-key',
+        perception: buildFallbackPerception(
+          frameIndex,
+          'GEMINI_API_KEY belum di-set di server.'
+        ),
+      });
     }
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    const geminiResponse = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: PERCEIVE_SYSTEM_PROMPT }],
-        },
+        system_instruction: { parts: [{ text: PERCEIVE_SYSTEM_PROMPT }] },
         contents: [
           {
             parts: [
@@ -39,9 +52,7 @@ export async function POST(request: NextRequest) {
                   data: image_base64,
                 },
               },
-              {
-                text: buildPerceiveUserPrompt(frame_index),
-              },
+              { text: buildPerceiveUserPrompt(frameIndex) },
             ],
           },
         ],
@@ -54,63 +65,102 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', errorText);
-      return NextResponse.json(
-        { success: false, error: 'AI perception failed' },
-        { status: 502 }
-      );
-    }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      return NextResponse.json(
-        { success: false, error: 'Empty AI response' },
-        { status: 502 }
-      );
-    }
-
-    // Parse and validate with Zod
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      // Try to extract JSON from markdown code blocks
-      const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[1]);
-      } else {
-        return NextResponse.json(
-          { success: false, error: 'Invalid JSON from AI' },
-          { status: 502 }
-        );
-      }
-    }
-
-    const validated = FramePerceptionSchema.safeParse(parsed);
-
-    if (!validated.success) {
-      console.error('Validation failed:', validated.error.issues);
-      // Return raw but tag as unvalidated
+    if (!geminiResponse.ok) {
+      const errBody = await geminiResponse.text();
+      console.error('[perceive] Gemini HTTP error', {
+        status: geminiResponse.status,
+        body: errBody.slice(0, 500),
+      });
       return NextResponse.json({
         success: true,
-        perception: { ...parsed as object, frame_id: `f${frame_index + 1}` },
-        _unvalidated: true,
+        degraded: true,
+        parse_method: `http-${geminiResponse.status}`,
+        perception: buildFallbackPerception(
+          frameIndex,
+          'AI lagi sibuk. Coba upload screenshot lagi.'
+        ),
+      });
+    }
+
+    const data = await geminiResponse.json();
+    const rawText: string | undefined =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      console.error('[perceive] Empty Gemini response', {
+        hasData: Boolean(data),
+        keys: data ? Object.keys(data) : [],
+        finishReason: data?.candidates?.[0]?.finishReason,
+      });
+      return NextResponse.json({
+        success: true,
+        degraded: true,
+        parse_method: 'empty-response',
+        perception: buildFallbackPerception(frameIndex, 'AI nggak balas. Coba lagi.'),
+      });
+    }
+
+    // Always log raw response (truncated) for production debugging.
+    const rawSnippet = rawText.length > 800 ? rawText.slice(0, 800) + '\u2026' : rawText;
+    console.log('[perceive] Raw Gemini text:', rawSnippet);
+
+    const extracted = extractJSON(rawText);
+
+    if (!extracted) {
+      console.error('[perceive] All JSON extraction strategies failed', {
+        rawLength: rawText.length,
+        rawHead: rawText.slice(0, 200),
+      });
+      return NextResponse.json({
+        success: true,
+        degraded: true,
+        parse_method: 'extraction-failed',
+        perception: buildFallbackPerception(frameIndex, rawText),
+      });
+    }
+
+    const candidate = extracted.data as Record<string, unknown>;
+    if (!candidate.frame_id || typeof candidate.frame_id !== 'string') {
+      candidate.frame_id = `f${frameIndex + 1}`;
+    }
+
+    const validated = FramePerceptionSchema.safeParse(candidate);
+
+    if (!validated.success) {
+      console.error('[perceive] Zod validation failed after extraction', {
+        method: extracted.method,
+        issues: validated.error.issues,
+        candidate,
+      });
+      return NextResponse.json({
+        success: true,
+        degraded: true,
+        parse_method: `${extracted.method}-invalid`,
+        perception: buildFallbackPerception(
+          frameIndex,
+          typeof candidate.one_line_mirror === 'string'
+            ? candidate.one_line_mirror
+            : rawText
+        ),
       });
     }
 
     return NextResponse.json({
       success: true,
+      degraded: false,
+      parse_method: extracted.method,
       perception: validated.data,
     });
   } catch (error) {
-    console.error('Perceive route error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('[perceive] Unhandled route error', error);
+    return NextResponse.json({
+      success: true,
+      degraded: true,
+      parse_method: 'route-exception',
+      perception: buildFallbackPerception(
+        frameIndex,
+        'Server crash. Bukan lo. Coba lagi.'
+      ),
+    });
   }
 }
