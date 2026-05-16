@@ -4,7 +4,8 @@
   "type": "module",
   "description": "AI Behavioral Mirror - membaca pola hidup digital dari screenshot",
   "scripts": {
-    "dev": "next dev",
+    "dev": "bash scripts/dev.sh",
+    "dev:plain": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
