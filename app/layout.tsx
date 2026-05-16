@@ -1,15 +1,17 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Drift - Emotional AI Reflection',
-  description: 'Upload your screenshot. Discover your digital behavior through emotional AI insights.',
-  viewport: 'width=device-width, initial-scale=1.0, viewport-fit=cover',
-  themeColor: '#faf8f3',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-  },
+  title: 'Drift - AI Behavioral Mirror',
+  description: 'AI yang membaca pola hidup digital lo dari screenshot. Bukan quote generator.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#1a1816',
 };
 
 export default function RootLayout({
@@ -18,14 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#faf8f3" />
-      </head>
-      <body className="bg-background text-foreground">
-        <div className="min-h-screen">
+    <html lang="id">
+      <body>
+        <div className="min-h-dvh flex flex-col">
           {children}
         </div>
       </body>

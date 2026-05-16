@@ -1,234 +1,151 @@
 'use client';
 
-import { useState } from 'react';
-import UploadZone from '@/components/UploadZone';
-import LoadingState from '@/components/LoadingState';
-import InsightCard from '@/components/InsightCard';
-import EmotionalProfile from '@/components/EmotionalProfile';
-import ChaosMeter from '@/components/ChaosMeter';
-import InternetAlterEgo from '@/components/InternetAlterEgo';
-import RecapCard from '@/components/RecapCard';
-import { motion } from 'framer-motion';
+import { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { CaptureStream } from '@/components/CaptureStream';
+import { getSession, clearSession } from '@/lib/session';
 
-interface Insight {
-  title: string;
-  observation: string;
-  tag: string;
-}
+type Phase = 'onboarding' | 'capture' | 'mirror';
 
-interface AnalysisResult {
-  emotionalProfile: {
-    primaryEmotion: string;
-    intensity: number;
-    confidence: number;
-  };
-  insights: Insight[];
-  chaosMeter: number;
-  internetAlterEgo: string;
-  recap: string;
-  fallback?: boolean;
-}
+export default function HomePage() {
+  const [phase, setPhase] = useState<Phase>('onboarding');
 
-const MAX_SCREENSHOTS = 5;
+  const handleStart = useCallback(() => {
+    setPhase('capture');
+  }, []);
 
-export default function Home() {
-  const [screenshotCount, setScreenshotCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const handleRevealReady = useCallback(() => {
+    setPhase('mirror');
+  }, []);
 
-  const handleUpload = async (file: File) => {
-    setIsLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze screenshot');
-      }
-
-      const result = await response.json();
-      setAnalysis(result);
-      setScreenshotCount((prev) => prev + 1);
-    } catch (err) {
-      console.error('Upload error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleReset = () => {
-    setAnalysis(null);
-    setScreenshotCount(0);
-  };
+  const handleReset = useCallback(() => {
+    clearSession();
+    setPhase('onboarding');
+  }, []);
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="border-b border-border-subtle bg-surface py-6 md:py-8"
+    <AnimatePresence mode="wait">
+      {phase === 'onboarding' && (
+        <OnboardingPhase key="onboard" onStart={handleStart} />
+      )}
+      {phase === 'capture' && (
+        <CapturePhase key="capture" onRevealReady={handleRevealReady} />
+      )}
+      {phase === 'mirror' && (
+        <MirrorPhase key="mirror" onReset={handleReset} />
+      )}
+    </AnimatePresence>
+  );
+}
+
+function OnboardingPhase({ onStart }: { onStart: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col items-center justify-center px-6 text-center"
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
       >
-        <div className="container">
-          <div className="space-y-2">
-            <h1 className="text-display text-foreground">Drift</h1>
-            <p className="text-body text-foreground opacity-70">
-              Discover your digital behavior through emotional AI insights
-            </p>
-          </div>
-        </div>
-      </motion.header>
+        <h1 className="text-2xl font-medium tracking-tight text-foreground">
+          drift
+        </h1>
+        <p className="mt-6 text-sm text-foreground/50 leading-relaxed max-w-[300px]">
+          Gw baca jejak digital lo dari screenshot HP.
+          <br /><br />
+          Bukan motivasi. Bukan nasihat.
+          <br />
+          Cuma cermin.
+        </p>
 
-      {/* Main Content */}
-      <div className="container py-8 md:py-12">
-        {!analysis ? (
-          // Upload Phase
-          <motion.div
-            key="upload"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-8"
-          >
-            {isLoading ? (
-              <LoadingState />
-            ) : (
-              <>
-                <UploadZone
-                  onUpload={handleUpload}
-                  isLoading={isLoading}
-                  screenshotCount={screenshotCount}
-                  maxScreenshots={MAX_SCREENSHOTS}
-                />
+        <p className="mt-8 text-xs text-foreground/30 max-w-[260px]">
+          Upload screenshot dari app apapun yang lo buka hari ini.
+          Timeline, chat, notif, browsing history, jam berapa aja.
+        </p>
+      </motion.div>
 
-                {/* Info Section */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.5 }}
-                  className="rounded-lg border border-border-subtle bg-surface-subtle p-6 md:p-8"
-                >
-                  <h2 className="text-heading font-semibold text-foreground mb-4">
-                    How it works
-                  </h2>
-                  <ul className="space-y-3 text-body text-foreground opacity-80">
-                    <li className="flex gap-3">
-                      <span className="text-accent-primary font-bold flex-shrink-0">1.</span>
-                      <span>Upload a screenshot of your screen</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-accent-primary font-bold flex-shrink-0">2.</span>
-                      <span>Our AI analyzes your digital behavior</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-accent-primary font-bold flex-shrink-0">3.</span>
-                      <span>Receive emotionally accurate insights about your patterns</span>
-                    </li>
-                  </ul>
-                </motion.div>
-              </>
-            )}
-          </motion.div>
-        ) : (
-          // Report Phase
-          <motion.div
-            key="report"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-8"
-          >
-            {/* Emotional Profile */}
-            <EmotionalProfile
-              primaryEmotion={analysis.emotionalProfile.primaryEmotion}
-              intensity={analysis.emotionalProfile.intensity}
-              confidence={analysis.emotionalProfile.confidence}
-            />
+      <motion.button
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        onClick={onStart}
+        className="mt-12 px-8 py-3 rounded-lg bg-accent text-background text-sm font-medium active:scale-[0.97] transition-transform"
+      >
+        Mulai
+      </motion.button>
 
-            {/* Insight Cards */}
-            <div className="space-y-4">
-              {analysis.insights.map((insight, index) => (
-                <InsightCard
-                  key={index}
-                  title={insight.title}
-                  observation={insight.observation}
-                  tag={insight.tag}
-                  index={index}
-                />
-              ))}
-            </div>
-
-            {/* Chaos Meter */}
-            <ChaosMeter value={analysis.chaosMeter} />
-
-            {/* Internet Alter Ego */}
-            <InternetAlterEgo text={analysis.internetAlterEgo} />
-
-            {/* Recap */}
-            <RecapCard text={analysis.recap} />
-
-            {/* Fallback Badge */}
-            {analysis.fallback && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="rounded-lg border border-border-subtle bg-surface-subtle p-4 text-center"
-              >
-                <p className="text-caption text-foreground opacity-60">
-                  This reflection was generated with care when our AI couldn't analyze your screenshot.
-                </p>
-              </motion.div>
-            )}
-
-            {/* Action Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.3 }}
-              className="flex gap-3 pt-4"
-            >
-              <button
-                onClick={handleReset}
-                className="btn-secondary flex-1"
-              >
-                Upload Another
-              </button>
-              {screenshotCount < MAX_SCREENSHOTS && (
-                <button
-                  onClick={handleReset}
-                  className="btn-primary flex-1"
-                >
-                  Continue Reflecting
-                </button>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <motion.footer
+      <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-        className="border-t border-border-subtle bg-surface py-6 md:py-8 mt-12"
+        transition={{ delay: 0.8 }}
+        className="mt-4 text-[11px] text-foreground/20"
       >
-        <div className="container text-center">
-          <p className="text-caption text-foreground opacity-60">
-            Drift is a stateless, privacy-first AI reflection tool. Your screenshots are never stored.
-          </p>
-        </div>
-      </motion.footer>
-    </main>
+        Screenshot lo ga disimpan di server.
+      </motion.p>
+    </motion.div>
+  );
+}
+
+function CapturePhase({ onRevealReady }: { onRevealReady: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col"
+    >
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border/50">
+        <p className="text-xs font-mono text-foreground/40 text-center">
+          drift / capture
+        </p>
+      </div>
+
+      {/* Stream */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <CaptureStream onRevealReady={onRevealReady} />
+      </div>
+    </motion.div>
+  );
+}
+
+function MirrorPhase({ onReset }: { onReset: () => void }) {
+  const session = typeof window !== 'undefined' ? getSession() : null;
+  const frameCount = session?.frames.length ?? 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col items-center justify-center px-6 text-center"
+    >
+      <motion.div
+        initial={{ y: 10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="max-w-[320px]"
+      >
+        <p className="text-xs font-mono text-foreground/40 mb-4">
+          {frameCount} fragments captured
+        </p>
+        <p className="text-sm text-foreground/60 leading-relaxed">
+          Stage 2 (Pattern Detection) dan Stage 3 (Narrative Mirror) belum di-implement.
+          <br /><br />
+          Tapi lo udah bisa ngerasain Stage 1 — gimana AI acknowledge detail spesifik dari tiap screenshot.
+        </p>
+      </motion.div>
+
+      <button
+        onClick={onReset}
+        className="mt-8 px-6 py-2.5 rounded-lg border border-border/50 text-sm text-foreground/60 active:scale-[0.97] transition-transform"
+      >
+        Mulai sesi baru
+      </button>
+    </motion.div>
   );
 }

@@ -1,10 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
-  typescript: {
-    ignoreBuildErrors: false,
-  },
+  output: 'standalone',
 };
 
 export default nextConfig;

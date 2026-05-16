@@ -1,186 +1,52 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: #faf8f3;
-    --foreground: #2a2620;
-    --surface: #ffffff;
-    --accent-primary: #c9a876;
-    --accent-secondary: #8b7355;
-    --border: #e0d5c7;
-    --shadow-sm: 0 1px 3px rgba(42, 38, 32, 0.06);
-    --shadow-md: 0 4px 12px rgba(42, 38, 32, 0.08);
-    --shadow-lg: 0 12px 24px rgba(42, 38, 32, 0.1);
-  }
+@theme {
+  --color-background: #1a1816;
+  --color-foreground: #e8e2d9;
+  --color-surface: #242220;
+  --color-surface-alt: #2d2a27;
+  --color-surface-hover: #363330;
+  --color-accent: #c9a876;
+  --color-accent-dim: #8b7355;
+  --color-border: #3d3833;
+  --color-border-subtle: #2d2a27;
 
-  * {
-    border-color: var(--border);
-  }
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-
-  html {
-    scroll-behavior: smooth;
-  }
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-@layer components {
-  .container {
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 42rem;
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  @media (min-width: 768px) {
-    .container {
-      padding-left: 32px;
-      padding-right: 32px;
-    }
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.5rem;
-    background-color: var(--accent-primary);
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-    font-weight: 500;
-    color: var(--foreground);
-    transition: all 150ms;
-  }
-
-  .btn-primary:active {
-    transform: scale(0.98);
-  }
-
-  .btn-primary:hover {
-    box-shadow: 0 4px 12px rgba(42, 38, 32, 0.08);
-  }
-
-  .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.5rem;
-    border: 1px solid var(--border);
-    background-color: var(--surface);
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-    font-weight: 500;
-    color: var(--foreground);
-    transition: all 150ms;
-  }
-
-  .btn-secondary:active {
-    transform: scale(0.98);
-  }
-
-  .btn-secondary:hover {
-    box-shadow: 0 4px 12px rgba(42, 38, 32, 0.08);
-  }
-
-  .card {
-    border-radius: 0.5rem;
-    border: 1px solid var(--border);
-    background-color: var(--surface);
-    padding: 1.5rem;
-    box-shadow: 0 4px 12px rgba(42, 38, 32, 0.08);
-  }
-
-  .insight-card {
-    border-radius: 0.5rem;
-    background-color: #f5f3f0;
-    padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(42, 38, 32, 0.06);
-  }
-
-  .text-display {
-    font-size: 2.5rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-  }
-
-  .text-heading {
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-
-  .text-body {
-    font-size: 1rem;
-    font-weight: 400;
-    line-height: 1.7;
-  }
-
-  .text-caption {
-    font-size: 0.875rem;
-    font-weight: 400;
-    opacity: 0.85;
-  }
+* {
+  border-color: var(--color-border);
 }
 
-/* Smooth animations */
-@media (prefers-reduced-motion: no-preference) {
-  .fade-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  .slide-up {
-    animation: slideUp 0.3s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Skeleton loading animation */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    #f5f3f0 25%,
-    #efe9e0 50%,
-    #f5f3f0 75%
-  );
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite;
+/* Scrollbar minimal */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+/* Prevent overscroll on mobile */
+html, body {
+  overscroll-behavior: none;
 }
