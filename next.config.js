@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // 'standalone' produces .next/standalone/server.js — required for Cloud Run.
+  // 'standalone' produces .next/standalone/server.js — required for Cloud Run / Docker.
   output: 'standalone',
-  // Allow standalone tracer to find the project root unambiguously.
   outputFileTracingRoot: process.cwd(),
-  // No image optimization needed (static export-style assets); avoid sharp on Cloud Run.
+  // No image optimization needed; avoids sharp dependency at runtime.
   images: { unoptimized: true },
-  // Termux / Android / low-inotify environments — switch Watchpack to polling
-  // and exclude pnpm store + node_modules from watching.
+  // Strict TS checking in production build (Vercel default).
+  typescript: { ignoreBuildErrors: false },
+  // Dev-only: polling watcher for Termux / Android / low-inotify envs.
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
@@ -20,7 +20,6 @@ const nextConfig = {
           '**/.git/**',
           '**/.next/**',
           '**/.pnpm-store/**',
-          '/projects/sandbox/.pnpm-store/**',
         ],
       };
     }
