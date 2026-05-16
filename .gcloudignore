@@ -1,0 +1,15 @@
+# Cloud Build / Cloud Run source upload exclusions.
+# Mirrors .dockerignore — Cloud Run UI uses these to filter source.
+.git
+.gitignore
+node_modules
+.next
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+.pnpm-store
+.kiro
+.cursor
+scripts/probe-dev.sh
